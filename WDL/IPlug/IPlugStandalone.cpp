@@ -115,13 +115,11 @@ bool IPlugStandalone::SendSysEx(ISysEx* pSysEx)
 #ifdef OS_IOS
 void IPlugStandalone::LockMutexAndProcessSingleReplacing(float** inputs, float** outputs, int nFrames)
 {
-  IMutexLock lock(this);
   ProcessSingleReplacing(inputs, outputs, nFrames);
 }
 #else
 void IPlugStandalone::LockMutexAndProcessDoubleReplacing(double** inputs, double** outputs, int nFrames)
 {
-  IMutexLock lock(this);
   ProcessDoubleReplacing(inputs, outputs, nFrames);
 }
 #endif

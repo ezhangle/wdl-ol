@@ -145,7 +145,10 @@ ComponentResult IPlugProcessRTAS::IsControlAutomatable(long aControlIndex, short
   if (aControlIndex == 1) // master bypass
     *aItIsP = 1;
   else
+  {
+    WDL_MutexLock lock(&mPlug->mParams_mutex);
     *aItIsP = mPlug->GetParam(aControlIndex-kPTParamIdxOffset)->GetCanAutomate() ? 1 : 0;
+  }
 
   return noErr;
 }

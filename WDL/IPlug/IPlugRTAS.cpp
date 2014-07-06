@@ -65,8 +65,6 @@ void IPlugRTAS::SetIO(int nInputs, int nOutputs)
 
 void IPlugRTAS::ProcessAudio(float** inputs, float** outputs, int nFrames)
 {
-  IMutexLock lock(this);
-
   AttachInputBuffers(0, NInChannels(), inputs, nFrames);
   AttachOutputBuffers(0, NOutChannels(), outputs);
 
@@ -75,8 +73,6 @@ void IPlugRTAS::ProcessAudio(float** inputs, float** outputs, int nFrames)
 
 void IPlugRTAS::ProcessAudioBypassed(float** inputs, float** outputs, int nFrames)
 {
-  IMutexLock lock(this);
-
   AttachInputBuffers(0, NInChannels(), inputs, nFrames);
   AttachOutputBuffers(0, NOutChannels(), outputs);
 
@@ -98,6 +94,7 @@ void IPlugRTAS::BeginInformHostOfParamChange(int idx)
 void IPlugRTAS::InformHostOfParamChange(int idx, double normalizedValue) // actually we don't use normalized value
 {
   if (!mProcess) return;
+  // UI thread only! I hope!
   
   IParam* pParam = GetParam(idx);
 
@@ -209,6 +206,7 @@ void IPlugRTAS::SetParameter(int idx)
   
   if ( mProcess->IsValidControlIndex(idx) )
   {
+    WDL_MutexLock lock(&mParams_mutex);
     IParam* pParam = GetParam(idx - kPTParamIdxOffset);
     double value;
 
@@ -231,8 +229,6 @@ void IPlugRTAS::SetParameter(int idx)
       default:
         break;
     }
-
-    IMutexLock lock(this);
 
     if (GetGUI())
       GetGUI()->SetParameterFromPlug(idx - kPTParamIdxOffset, value, false);

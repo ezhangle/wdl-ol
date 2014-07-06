@@ -230,15 +230,6 @@ public:
   // For controls that need to interface directly with LICE.
   inline LICE_SysBitmap* GetDrawBitmap() const { return mDrawBitmap; }
 
-  WDL_Mutex mMutex;
-
-  struct IMutexLock
-  {
-    WDL_Mutex* mpMutex;
-    IMutexLock(IGraphics* pGraphics) : mpMutex(&(pGraphics->mMutex)) { mpMutex->Enter(); }
-    ~IMutexLock() { mpMutex->Leave(); }
-  };
-
 protected:
   WDL_PtrList<IControl> mControls;
   IPlugBase* mPlug;

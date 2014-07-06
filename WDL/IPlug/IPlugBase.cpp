@@ -228,9 +228,9 @@ void IPlugBase::SetHost(const char* host, int version)
 #ifndef OS_IOS
 void IPlugBase::AttachGraphics(IGraphics* pGraphics)
 {
+  // UI thread
   if (pGraphics)
   {
-    WDL_MutexLock lock(&mMutex);
     int i, n = mParams.GetSize();
     
     for (i = 0; i < n; ++i)
@@ -535,7 +535,6 @@ void IPlugBase::SetLatency(int samples)
 void IPlugBase::SetParameterFromGUI(int idx, double normalizedValue)
 {
   Trace(TRACELOC, "%d:%f", idx, normalizedValue);
-  WDL_MutexLock lock(&mMutex);
   GetParam(idx)->SetNormalized(normalizedValue);
   InformHostOfParamChange(idx, normalizedValue);
   OnParamChange(idx);
@@ -543,6 +542,7 @@ void IPlugBase::SetParameterFromGUI(int idx, double normalizedValue)
 
 void IPlugBase::OnParamReset()
 {
+  WDL_MutexLock lock(&mParams_mutex); 
   for (int i = 0; i < mParams.GetSize(); ++i)
   {
     OnParamChange(i);
@@ -553,7 +553,6 @@ void IPlugBase::OnParamReset()
 // Default passthrough.
 void IPlugBase::ProcessDoubleReplacing(double** inputs, double** outputs, int nFrames)
 {
-  // Mutex is already locked.
   int i, nIn = mInChannels.GetSize(), nOut = mOutChannels.GetSize();
   int j = 0;
   for (i = 0; i < nOut; ++i)
@@ -574,7 +573,6 @@ void IPlugBase::ProcessDoubleReplacing(double** inputs, double** outputs, int nF
 // Default passthrough ONLY USED BY IOS.
 void IPlugBase::ProcessSingleReplacing(float** inputs, float** outputs, int nFrames)
 {
-  // Mutex is already locked.
   int i, nIn = mInChannels.GetSize(), nOut = mOutChannels.GetSize();
   for (i = 0; i < nIn; ++i)
   {
@@ -640,6 +638,7 @@ void IPlugBase::MakeDefaultPreset(char* name, int nPresets)
 
 void IPlugBase::MakePreset(char* name, ...)
 {
+  // UI thread only?
   IPreset* pPreset = GetNextUninitializedPreset(&mPresets);
   if (pPreset)
   {
@@ -664,6 +663,7 @@ void IPlugBase::MakePreset(char* name, ...)
 void IPlugBase::MakePresetFromNamedParams(char* name, int nParamsNamed, ...)
 {
   TRACE;
+  // UI thread only?
   IPreset* pPreset = GetNextUninitializedPreset(&mPresets);
   if (pPreset)
   {
@@ -893,8 +893,8 @@ int IPlugBase::UnserializePresets(ByteChunk* pChunk, int startPos)
 bool IPlugBase::SerializeParams(ByteChunk* pChunk)
 {
   TRACE;
+  // UI thread only?
 
-  WDL_MutexLock lock(&mMutex);
   bool savedOK = true;
   int i, n = mParams.GetSize();
   for (i = 0; i < n && savedOK; ++i)
@@ -910,8 +910,10 @@ bool IPlugBase::SerializeParams(ByteChunk* pChunk)
 int IPlugBase::UnserializeParams(ByteChunk* pChunk, int startPos)
 {
   TRACE;
+  // technically do not need to lock here, but lock to load state all at once
+  // (and if the parameter count changes, that'll be good to have anyway)
+  WDL_MutexLock lock(&mParams_mutex);
 
-  WDL_MutexLock lock(&mMutex);
   int i, n = mParams.GetSize(), pos = startPos;
   for (i = 0; i < n && pos >= 0; ++i)
   {
@@ -947,6 +949,7 @@ bool IPlugBase::CompareState(const unsigned char* incomingState, int startPos)
 #ifndef OS_IOS
 void IPlugBase::RedrawParamControls()
 {
+  // UI thread only?
   if (mGraphics)
   {
     int i, n = mParams.GetSize();
@@ -960,8 +963,7 @@ void IPlugBase::RedrawParamControls()
 #endif
 void IPlugBase::DirtyParameters()
 {
-  WDL_MutexLock lock(&mMutex);
-
+   // UI thread only? If not add lock
   for (int p = 0; p < NParams(); p++)
   {
     double normalizedValue = GetParam(p)->GetNormalized();
@@ -1079,6 +1081,7 @@ const int kFXBVersionNum = 2;
 #ifndef OS_IOS
 bool IPlugBase::SaveProgramAsFXP(const char* defaultFileName)
 {
+  // UI thread only?
   if (mGraphics)
   {
     WDL_String fileName(defaultFileName, strlen(defaultFileName));
@@ -1158,6 +1161,7 @@ bool IPlugBase::SaveProgramAsFXP(const char* defaultFileName)
 
 bool IPlugBase::SaveBankAsFXB(const char* defaultFileName)
 {
+  // UI thread only
   if (mGraphics)
   {
     WDL_String fileName(defaultFileName, strlen(defaultFileName));
@@ -1340,6 +1344,7 @@ bool IPlugBase::LoadProgramFromFXP()
         }
         else if (fxpMagic == 'FxCk')
         {
+          mParams_mutex.Enter();
           for (int i = 0; i< NParams(); i++)
           {
             WDL_EndianFloat v32;
@@ -1347,6 +1352,7 @@ bool IPlugBase::LoadProgramFromFXP()
             v32.int32 = WDL_bswap_if_le(v32.int32);
             mParams.Get(i)->SetNormalized((double) v32.f);
           }
+          mParams_mutex.Leave();
 
           ModifyCurrentPreset(prgName);
           RestorePreset(GetCurrentPresetIdx());
@@ -1477,6 +1483,7 @@ bool IPlugBase::LoadBankFromFXB()
 
             RestorePreset(i);
 
+            mParams_mutex.Enter();
             for (int j = 0; j< NParams(); j++)
             {
               WDL_EndianFloat v32;
@@ -1484,6 +1491,7 @@ bool IPlugBase::LoadBankFromFXB()
               v32.int32 = WDL_bswap_if_le(v32.int32);
               mParams.Get(j)->SetNormalized((double) v32.f);
             }
+            mParams_mutex.Leave();
 
             ModifyCurrentPreset(prgName);
           }

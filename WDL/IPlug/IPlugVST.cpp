@@ -331,7 +331,6 @@ VstIntPtr VSTCALLBACK IPlugVST::VSTDispatcher(AEffect *pEffect, VstInt32 opCode,
   {
     return 0;
   }
-  IPlugBase::IMutexLock lock(_this);
 
   // Handle a couple of opcodes here to make debugging easier.
   switch (opCode)
@@ -356,12 +355,12 @@ VstIntPtr VSTCALLBACK IPlugVST::VSTDispatcher(AEffect *pEffect, VstInt32 opCode,
     }
     case effClose:
     {
-      lock.Destroy();
       DELETE_NULL(_this);
       return 0;
     }
     case effGetParamLabel:
     {
+     // UI thread only I hope! at least REAPER is, otherwise WDL_MutexLock lock(&_this->mParams_mutex);
       if (idx >= 0 && idx < _this->NParams())
       {
         strcpy((char*) ptr, _this->GetParam(idx)->GetLabelForHost());
@@ -370,6 +369,7 @@ VstIntPtr VSTCALLBACK IPlugVST::VSTDispatcher(AEffect *pEffect, VstInt32 opCode,
     }
     case effGetParamDisplay:
     {
+     // UI thread only I hope! at least REAPER is, otherwise WDL_MutexLock lock(&_this->mParams_mutex);
       if (idx >= 0 && idx < _this->NParams())
       {
         _this->GetParam(idx)->GetDisplayForHost((char*) ptr);
@@ -378,6 +378,7 @@ VstIntPtr VSTCALLBACK IPlugVST::VSTDispatcher(AEffect *pEffect, VstInt32 opCode,
     }
     case effGetParamName:
     {
+     // UI thread only I hope! at least REAPER is, otherwise WDL_MutexLock lock(&_this->mParams_mutex);
       if (idx >= 0 && idx < _this->NParams())
       {
         strcpy((char*) ptr, _this->GetParam(idx)->GetNameForHost());
@@ -400,6 +401,7 @@ VstIntPtr VSTCALLBACK IPlugVST::VSTDispatcher(AEffect *pEffect, VstInt32 opCode,
 //    }
     case effString2Parameter:
     {
+      // UI thread only I hope! at least REAPER is, otherwise WDL_MutexLock lock(&_this->mParams_mutex);
       if (idx >= 0 && idx < _this->NParams())
       {
         if (ptr)
@@ -851,7 +853,6 @@ void VSTCALLBACK IPlugVST::VSTProcess(AEffect* pEffect, float** inputs, float** 
 {
   TRACE_PROCESS;
   IPlugVST* _this = (IPlugVST*) pEffect->object;
-  IMutexLock lock(_this);
   _this->VSTPrepProcess(inputs, outputs, nFrames);
   _this->ProcessBuffersAccumulating((float) 0.0f, nFrames);
 }
@@ -860,7 +861,6 @@ void VSTCALLBACK IPlugVST::VSTProcessReplacing(AEffect* pEffect, float** inputs,
 {
   TRACE_PROCESS;
   IPlugVST* _this = (IPlugVST*) pEffect->object;
-  IMutexLock lock(_this);
   _this->VSTPrepProcess(inputs, outputs, nFrames);
   _this->ProcessBuffers((float) 0.0f, nFrames);
 }
@@ -869,7 +869,6 @@ void VSTCALLBACK IPlugVST::VSTProcessDoubleReplacing(AEffect* pEffect, double** 
 {
   TRACE_PROCESS;
   IPlugVST* _this = (IPlugVST*) pEffect->object;
-  IMutexLock lock(_this);
   _this->VSTPrepProcess(inputs, outputs, nFrames);
   _this->ProcessBuffers((double) 0.0, nFrames);
 }
@@ -878,7 +877,7 @@ float VSTCALLBACK IPlugVST::VSTGetParameter(AEffect *pEffect, VstInt32 idx)
 {
   Trace(TRACELOC, "%d", idx);
   IPlugVST* _this = (IPlugVST*) pEffect->object;
-  IMutexLock lock(_this);
+  WDL_MutexLock lock(&_this->mParams_mutex);
   if (idx >= 0 && idx < _this->NParams())
   {
     return (float) _this->GetParam(idx)->GetNormalized();
@@ -890,7 +889,7 @@ void VSTCALLBACK IPlugVST::VSTSetParameter(AEffect *pEffect, VstInt32 idx, float
 {
   Trace(TRACELOC, "%d:%f", idx, value);
   IPlugVST* _this = (IPlugVST*) pEffect->object;
-  IMutexLock lock(_this);
+  WDL_MutexLock lock(&_this->mParams_mutex);
   if (idx >= 0 && idx < _this->NParams())
   {
     if (_this->GetGUI())

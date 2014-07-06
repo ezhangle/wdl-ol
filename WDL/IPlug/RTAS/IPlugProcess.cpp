@@ -359,6 +359,7 @@ ComponentResult IPlugProcess::SetChunk(OSType chunkID, SFicPlugInChunk *chunk)
     IPlugChunk.PutBytes(chunk->fData, dataSize);
     mPlug->UnserializeState(&IPlugChunk, 0);
     
+    WDL_MutexLock lock(&mPlug->mParams_mutex);
     for (int i = 0; i< mPlug->NParams(); i++)
     {
       IParam *p = mPlug->GetParam(i);

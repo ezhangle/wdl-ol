@@ -159,6 +159,7 @@ AAX_Result IPlugAAX::EffectInit()
   mBypassParameter->SetType( AAX_eParameterType_Discrete );
   mParameterManager.AddParameter(mBypassParameter);
       
+  // UI thread only? If not, need to lock mParams_mutex
   for (int i=0;i<NParams();i++)
   {
     IParam *p = GetParam(i);
@@ -256,10 +257,9 @@ AAX_Result IPlugAAX::UpdateParameterNormalizedValue(AAX_CParamID iParameterID, d
   
   int paramIdx = atoi(iParameterID) - kAAXParamIdxOffset;
   
+  // UI thread only? If not, need to lock mParams_mutex
   if ((paramIdx >= 0) && (paramIdx < NParams())) 
   {
-    IMutexLock lock(this);
-    
     GetParam(paramIdx)->SetNormalized(iValue);
     
     if (GetGUI())
@@ -281,8 +281,6 @@ AAX_Result IPlugAAX::UpdateParameterNormalizedValue(AAX_CParamID iParameterID, d
 void IPlugAAX::RenderAudio(AAX_SIPlugRenderInfo* ioRenderInfo)
 {
   TRACE_PROCESS;
-
-  IMutexLock lock(this);
 
   // Get bypass parameter value
   bool bypass;
@@ -403,6 +401,7 @@ AAX_Result IPlugAAX::GetChunk(AAX_CTypeID chunkID, AAX_SPlugInChunk * oChunk ) c
 AAX_Result IPlugAAX::SetChunk(AAX_CTypeID chunkID, const AAX_SPlugInChunk * iChunk )
 {
   TRACE;
+  // UI thread only?
   
   if (chunkID == GetUniqueID())
   {    

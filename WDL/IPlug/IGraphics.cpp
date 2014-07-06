@@ -21,11 +21,9 @@ public:
   };
 
   WDL_PtrList<BitmapKey> m_bitmaps;
-  WDL_Mutex m_mutex;
 
   LICE_IBitmap* Find(int id)
   {
-    WDL_MutexLock lock(&m_mutex);
     int i, n = m_bitmaps.GetSize();
     for (i = 0; i < n; ++i)
     {
@@ -37,7 +35,6 @@ public:
 
   void Add(LICE_IBitmap* bitmap, int id = -1)
   {
-    WDL_MutexLock lock(&m_mutex);
     BitmapKey* key = m_bitmaps.Add(new BitmapKey);
     key->id = id;
     key->bitmap = bitmap;
@@ -45,7 +42,6 @@ public:
 
   void Remove(LICE_IBitmap* bitmap)
   {
-    WDL_MutexLock lock(&m_mutex);
     int i, n = m_bitmaps.GetSize();
     for (i = 0; i < n; ++i)
     {
@@ -84,11 +80,9 @@ public:
   };
 
   WDL_PtrList<FontKey> m_fonts;
-  WDL_Mutex m_mutex;
 
   LICE_IFont* Find(IText* pTxt)
   {
-    WDL_MutexLock lock(&m_mutex);
     int i = 0, n = m_fonts.GetSize();
     for (i = 0; i < n; ++i)
     {
@@ -100,7 +94,6 @@ public:
 
   void Add(LICE_IFont* font, IText* pTxt)
   {
-    WDL_MutexLock lock(&m_mutex);
     FontKey* key = m_fonts.Add(new FontKey);
     key->size = pTxt->mSize;
     key->orientation = pTxt->mOrientation;
@@ -320,7 +313,6 @@ void IGraphics::SetParameterFromPlug(int paramIdx, double value, bool normalized
     IControl* pControl = *ppControl;
     if (pControl->ParamIdx() == paramIdx)
     {
-      //WDL_MutexLock lock(&mMutex);
       pControl->SetValueFromPlug(value);
       // Could be more than one, don't break until we check them all.
     }
@@ -339,7 +331,6 @@ void IGraphics::SetControlFromPlug(int controlIdx, double normalizedValue)
 {
   if (controlIdx >= 0 && controlIdx < mControls.GetSize())
   {
-    //WDL_MutexLock lock(&mMutex);
     mControls.Get(controlIdx)->SetValueFromPlug(normalizedValue);
   }
 }
@@ -732,9 +723,6 @@ bool IGraphics::IsDirty(IRECT* pR)
 // which may be a larger area than what is strictly dirty.
 bool IGraphics::Draw(IRECT* pR)
 {
-//  #pragma REMINDER("Mutex set while drawing")
-//  WDL_MutexLock lock(&mMutex);
-
   int i, j, n = mControls.GetSize();
   if (!n)
   {

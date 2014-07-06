@@ -338,8 +338,6 @@ tresult PLUGIN_API IPlugVST3::process(ProcessData& data)
 {
   TRACE_PROCESS;
 
-  IMutexLock lock(this);
-
   if(data.processContext)
     memcpy(&mProcessContext, data.processContext, sizeof(ProcessContext));
 
@@ -383,11 +381,14 @@ tresult PLUGIN_API IPlugVST3::process(ProcessData& data)
               break;
               //TODO pitch bend, modwheel etc
             default:
-              if (idx >= 0 && idx < NParams())
               {
-                GetParam(idx)->SetNormalized((double)value);
-                if (GetGUI()) GetGUI()->SetParameterFromPlug(idx, (double)value, true);
-                OnParamChange(idx);
+                WDL_MutexLock lock(&mParams_mutex);
+                if (idx >= 0 && idx < NParams())
+                {
+                  GetParam(idx)->SetNormalized((double)value);
+                  if (GetGUI()) GetGUI()->SetParameterFromPlug(idx, (double)value, true);
+                  OnParamChange(idx);
+                }
               }
               break;
           }
@@ -554,7 +555,6 @@ tresult PLUGIN_API IPlugVST3::process(ProcessData& data)
 //tresult PLUGIN_API IPlugVST3::setState(IBStream* state)
 //{
 //  TRACE;
-//  WDL_MutexLock lock(&mMutex);
 //
 //  ByteChunk chunk;
 //  SerializeState(&chunk); // to get the size
@@ -573,7 +573,6 @@ tresult PLUGIN_API IPlugVST3::process(ProcessData& data)
 //tresult PLUGIN_API IPlugVST3::getState(IBStream* state)
 //{
 //  TRACE;
-//  WDL_MutexLock lock(&mMutex);
 //
 //  ByteChunk chunk;
 //
@@ -589,7 +588,6 @@ tresult PLUGIN_API IPlugVST3::process(ProcessData& data)
 //tresult PLUGIN_API IPlugVST3::setComponentState(IBStream *state)
 //{
 //  TRACE;
-//  WDL_MutexLock lock(&mMutex);
 //
 //  ByteChunk chunk;
 //  SerializeState(&chunk); // to get the size
@@ -646,7 +644,6 @@ IPlugView* PLUGIN_API IPlugVST3::createView (const char* name)
 tresult PLUGIN_API IPlugVST3::setEditorState(IBStream* state)
 {
   TRACE;
-  WDL_MutexLock lock(&mMutex);
 
   ByteChunk chunk;
   SerializeState(&chunk); // to get the size
@@ -675,7 +672,6 @@ tresult PLUGIN_API IPlugVST3::setEditorState(IBStream* state)
 tresult PLUGIN_API IPlugVST3::getEditorState(IBStream* state)
 {
   TRACE;
-  WDL_MutexLock lock(&mMutex);
 
   ByteChunk chunk;
 
@@ -696,6 +692,7 @@ tresult PLUGIN_API IPlugVST3::getEditorState(IBStream* state)
 
 ParamValue PLUGIN_API IPlugVST3::plainParamToNormalized(ParamID tag, ParamValue plainValue)
 {
+  WDL_MutexLock lock(&mParams_mutex);
   IParam* param = GetParam(tag);
 
   if (param)
@@ -717,6 +714,7 @@ ParamValue PLUGIN_API IPlugVST3::getParamNormalized(ParamID tag)
 //     return (ParamValue) ToNormalizedParam(mCurrentPresetIdx, 0, NPresets(), 1.);
 //   }
 
+  WDL_MutexLock lock(&mParams_mutex);
   IParam* param = GetParam(tag);
 
   if (param)
@@ -729,6 +727,7 @@ ParamValue PLUGIN_API IPlugVST3::getParamNormalized(ParamID tag)
 
 tresult PLUGIN_API IPlugVST3::setParamNormalized(ParamID tag, ParamValue value)
 {
+  WDL_MutexLock lock(&mParams_mutex);
   IParam* param = GetParam(tag);
 
   if (param)
@@ -742,6 +741,7 @@ tresult PLUGIN_API IPlugVST3::setParamNormalized(ParamID tag, ParamValue value)
 
 tresult PLUGIN_API IPlugVST3::getParamStringByValue(ParamID tag, ParamValue valueNormalized, String128 string)
 {
+  WDL_MutexLock lock(&mParams_mutex);
   IParam* param = GetParam(tag);
 
   if (param)
