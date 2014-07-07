@@ -461,6 +461,7 @@ inline int GetMouseOver(IGraphicsMac* pGraphics)
     mGraphics = 0;
     graphics->CloseWindow();
   }
+  [super removeFromSuperview];
 }
 
 - (void) controlTextDidEndEditing: (NSNotification*) aNotification
